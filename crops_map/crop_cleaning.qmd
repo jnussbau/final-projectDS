@@ -1,0 +1,210 @@
+---
+title: "crop_data"
+author: "Nico Thorn"
+format: html
+editor: visual
+---
+This quarto document is where the cleaning of the United State Crop data was taken place.
+
+# Loading and cleaning the data
+```{r}
+# Loading library
+library(tidyverse)
+library(janitor)
+library(extrafont)
+loadfonts(device = "win")
+```
+
+```{r}
+# Loading data
+corn <-read_csv("src/uncleaned/crop_data/corn.csv")
+harvested <-read_csv("src/uncleaned/crop_data/harvest.csv")
+swine_20 <- read_csv("src/uncleaned/feral_swine_data/FY20_FeralSwine_Counties.csv")
+swine_21 <- read_csv("src/uncleaned/feral_swine_data/FY21_FeralSwine_Counties.csv")
+swine_22 <- read_csv("src/uncleaned/feral_swine_data/FY22_FeralSwine_Counties.csv")
+swine_23 <- read_csv("src/uncleaned/feral_swine_data/FY23_FeralSwine_Counties.csv")
+swine_24 <- read_csv("src/uncleaned/feral_swine_data/FY24_FeralSwine_Counties.csv")
+swine_25 <- read_csv("src/uncleaned/feral_swine_data/FY25_FeralSwine_Counties.csv")
+```
+
+```{r}
+head(corn)
+head(harvested)
+head(swine_20)
+head(swine_21)
+head(swine_22)
+head(swine_23)
+head(swine_24)
+head(swine_25)
+```
+
+```{r}
+# Cleaning the data sets into something we can use for better data viz and analysis
+
+clean_planted <- corn %>% 
+                  clean_names() %>% 
+                  mutate(ansi = str_c(state_ansi, county_ansi)) %>% 
+                  select(year,state, county,commodity, data_item, value, year, ansi) %>% 
+                  pivot_wider(names_from = data_item, values_from = value) %>% 
+                  clean_names()
+
+# There was a problem with the harvested
+clean_harvested <- harvested %>% 
+                      clean_names() %>% 
+                      mutate(ansi = str_c(state_ansi, county_ansi)) %>% 
+                      select(state, county, commodity, data_item, value, year, ansi) %>% 
+                      filter(value != "(D)") %>%
+                      mutate(value = str_remove_all(value, ",")) %>% 
+                      mutate(value = as.numeric(value)) %>% 
+                      distinct(state, county, year, .keep_all = TRUE) %>% 
+                      pivot_wider(names_from = data_item, values_from = value) %>% 
+                      clean_names()
+```
+
+```{r}
+# Joining the two data sets
+planted_vs_harvested <- clean_planted %>%
+                          left_join(clean_harvested) %>% 
+                          filter(county != "OTHER COUNTIES")
+head(planted_vs_harvested)
+summary(planted_vs_harvested)
+```
+
+```{r}
+# Hog data cleaning
+clean_swine_20 <- swine_20 %>% 
+                    clean_names() %>% 
+                    select(name,state_name, fips, swine_pres) %>% 
+                    distinct()
+clean_swine_20$year <- c(rep(2020, 1223))
+
+clean_swine_21 <- swine_21 %>% 
+                    clean_names %>% 
+                    select(name, state_name, fips) %>% 
+                    distinct()
+clean_swine_21$swine_pres <-c(rep("Yes", 1217))
+clean_swine_21$year <- c(rep(2021, 1217))
+
+clean_swine_22 <- swine_22 %>% 
+                    clean_names() %>% 
+                    mutate(swine_pres = status1) %>% 
+                    select(name, state_name, fips, swine_pres) %>% 
+                    distinct()
+clean_swine_22$year <- c(rep(2022, 1222))
+
+clean_swine_23 <- swine_23 %>% 
+                    clean_names() %>% 
+                    mutate(swine_pres = status1) %>% 
+                    select(name, state_name, fips, swine_pres) %>% 
+                    distinct()
+clean_swine_23$year <- c(rep(2023, 1215))
+
+clean_swine_24 <- swine_24 %>%
+                    clean_names() %>% 
+                    mutate(swine_pres = status1) %>% 
+                    select(name, state_name, fips, swine_pres) %>% 
+                    distinct()
+clean_swine_24$year <- c(rep(2024, 1183))
+
+clean_swine_25 <- swine_25 %>%
+                    clean_names %>% 
+                    select(name, state_name, fips) %>% 
+                    distinct()
+clean_swine_25$swine_pres <-c(rep("Yes", 1158))
+clean_swine_25$year <- c(rep(2025, 1158))
+
+head(clean_swine_20)
+head(clean_swine_21)
+head(clean_swine_22)
+head(clean_swine_23)
+head(clean_swine_24)
+head(clean_swine_25)
+```
+
+```{r}
+# Joining swine data
+clean_swine_data <- rbind(clean_swine_20, clean_swine_21, clean_swine_22, clean_swine_23, clean_swine_24, clean_swine_25)
+
+head(clean_swine_data)
+```
+
+```{r}
+# Joining crop and swine data
+crop_and_swine <- planted_vs_harvested %>% 
+                    left_join(clean_swine_data, by = c("ansi" = "fips", "year" = "year")) %>% 
+                    filter(is.na(corn_grain_acres_harvested) == FALSE) %>%                
+                    select(year, state, county, corn_acres_planted, corn_grain_acres_harvested, swine_pres) %>% 
+                    mutate(swine_pres = if_else(is.na(swine_pres) == TRUE, "No", swine_pres)) %>% 
+                    pivot_longer(c(corn_acres_planted,corn_grain_acres_harvested), names_to = "harvest_or_planted", values_to = "acres") %>% 
+                    mutate(acres = round(acres/100000, 0)) %>% 
+                    mutate(swine_pres = fct_relevel(swine_pres, "Yes")) %>% 
+                    mutate(harvest_or_planted = fct_recode(harvest_or_planted, "Acres Planted" = "corn_acres_planted", "Acres Harvested" = "corn_grain_acres_harvested")) %>% 
+                    mutate(harvest_or_planted = fct_relevel(harvest_or_planted, "Acres Harvested"))
+
+
+head(crop_and_swine)
+summary(crop_and_swine)
+```
+
+```{r}
+# Figuring out some information for the additional information in our chart.
+# Finding out the values of each of our bars
+total_crop <- crop_and_swine %>% 
+  group_by(swine_pres, harvest_or_planted) %>% 
+  summarise(sum(acres)) %>% 
+  clean_names()
+```
+
+# Making the visualization
+
+```{r}
+#| fig-alt: Bar chart showing differences in planted and harvested acres of corn in counties with feral swine presence vs. counties where feral swine have not been spotted. Most notably, the graph shows that there is a big difference in the number of acres of corn planted in counties without feral swine compared to those with. What is also notable is that there doesn’t seem to be a difference in the proportion of corn yielded in both types of counties.
+# Making bar chart
+swine_text <- "~90% of the acres of corn planted in feral swine occupied counties is harvested as grain." %>% 
+  str_wrap(width = 40)
+
+no_swine_text <- "~91% of the acres of corn planted in counties not occupied by feral swine is harvested as grain." %>% 
+  str_wrap(width = 60)
+
+summary_text <- "As seen in the graph, there seems to be little difference between the percent of acres of corn harvested in counties with feral swine as opposed to those without feral swine. However, our results may be due to confounding variables, such as our lower swine-populated county sample size, which may be attributed to most of the US corn fields being located in the Midwest, whereas the feral swine population is mainly concentrated in the South." %>% 
+  str_wrap(width = 120)
+
+ggplot(total_crop, aes(x = swine_pres, y = sum_acres, fill = harvest_or_planted))+
+  geom_col(aes(x = swine_pres, y = sum_acres, fill = harvest_or_planted), position = "dodge")+
+  coord_flip()+
+  theme_minimal()+
+  labs(y = "Acres of Corn (Measured in Hundred Thousands)", x = "Are Swine Present?", fill = "Production \nMeasurement", title = "Corn Yield in Swine Present vs Swine Absent Counties", caption = summary_text)+
+  scale_fill_manual(values = c("Acres Planted" = "#3b8132", "Acres Harvested" = "#8bca84"))+
+  geom_text(aes(label = sum_acres), color = "#242525", position = position_dodge(width = .9), size = 4, hjust = -0.3)+
+  annotate(geom = "label",
+           x = "Yes", 
+           y = 500,
+           label = swine_text,
+           hjust = "left") +
+  annotate(geom = "label",
+           x = 1.35,
+           y = 2750,
+           label = no_swine_text,
+           hjust = "left")+
+  annotate(geom = "segment",
+            x = 1.40,
+            y = 3850,
+            xend = 1.75,
+            yend =3750,
+            arrow = arrow(type = "closed"))+
+  theme(plot.title = element_text(size = 30, hjust = 0.5), text=element_text(family="serif"))
+          
+
+```
+
+# Description of Visualization
+The purpose of this graph was to take a look at the potential damage caused by feral swine on the United States agricultural sector. Most literature that highlights the damage or threat that the invasive feral swine population poses mainly focuses on the damage caused to crops and livestock. The biggest United States crop is corn, so if large amounts of damage to corn could be attributed to feral swine, then we could potentially assume that feral swine have largely affected the agricultural and, subsequently, the economic sectors of the United States.
+	
+This graph shows on its x-axis, which is vertical, the different categories of counties: those that have feral swine present and those that do not. The y-axis shows the number of acres of land (in hundreds of thousands of acres) that are used for farming corn for each of those county types. The colors are used to designate which metric we are looking at: acres harvested vs. acres planted of corn. We can see on the graph that there seems to be way more corn planted and harvested in counties that do not have a reported feral swine population as compared to their swine-populated counterparts. Additionally, the graph shows that there isn’t a clear difference between the proportions of corn that were successfully harvested for grain. This could suggest that there are confounding variables (perhaps there was more corn harvested in one area than another but just wasn’t quantified in the “grain” category) or that the feral swine might not cause much discernible damage to corn crops. What is also notable is that we don’t have comparable-sized groups. This might be because most of the US’ corn is grown in the Midwest, whereas the feral swine population is centered around the South.
+	
+Moving forward, we should focus on crops located in the territory of feral swine territory to get a better representation of the damage they are causing. Mapping the locations of crops and swine might also be helpful to this end so we can better see the overlap in crops and the swine territory. We also might want to analyze other metrics to assess damage caused by feral swine (i.e., property damage). We might also like to analyze the trends over time. Have we gotten better at reducing the damage caused by feral swine on crops, and how has that changed over time?
+
+
+
+# AI statement
+ChatGPT was used once to debug a problem with the way I was formatting the annotate statements in the graph.
