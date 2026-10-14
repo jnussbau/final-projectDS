@@ -1,0 +1,28 @@
+---
+title: "Cleaning"
+author: "Jack Nussbaum"
+format: html
+---
+
+```{r}
+#| messsage: FALSE
+#| warning: FALSE
+
+clean_counties <- function(year) {
+  read_csv(str_c("data/raw/swine-counties/counties_", year, ".csv")) |> 
+    select(county_ID = FIPS,
+           county = NAME,
+           state = STATE_NAME) |> 
+    mutate(swine = TRUE, year = year) |> 
+    unique()
+}
+
+combined_counties <- list_rbind(map(2020:2025, clean_counties)) |> 
+  pivot_wider(names_from = year, values_from = swine,
+              names_prefix = "swine_") |> 
+  mutate(across(where(is.logical), ~if_else(is.na(.x), FALSE, .x)))
+
+write_csv(combined_counties, "data/clean/combined_counties.csv")
+
+```
+

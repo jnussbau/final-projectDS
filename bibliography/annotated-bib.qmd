@@ -1,0 +1,22 @@
+---
+title: "Annotated Bibliography"
+author: "Jack Nussbaum"
+format: 
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+bibliography: references.bib
+csl: apa-annotated-bibliography.csl
+---
+
+
+## Overall Summary
+
+There are a variety of sources covering feral swine growth, management and solutions in the US. From the USDA, @usdaSite, they provide a number of resources, information and help for general population dealing with feral swine. @bevins2014consequences discusses the development of feral swine as an issue in the United States, and the last 50 years of history, where they have proliferated. Some articles focused more on the environmental impact that feral swine have, like @strickland2020wild and @vercauteren2004feral. These will provide a basis of factors to investigate, depending on what data we can acquire or what story we are looking to tell. Others, @mckee2020economic and @anderson2016economic direct their attention towards economic consequences of the feral swine, which could be another research question that we could evaluate. One final subtopic covered frequently in the literature is effectiveness of remediation. Often eradication, there are mixed reviews on what methods are most successful, more of which can be found in @kilgo2023assessing and @parkes2010rapid. These methods are hard to define, test and evaluate, making data hard to find that hasn't already been used in research.
+
+As far as process goes, two sources: @corn2017map, which takes a look at geospatial techniques, and @mcclure2015modeling, predicting habitat, are helpful to guiding what data techniques could be used to draw conclusions. The data story can be aided by these sources, helping apply data skills to our research questions. Some sources struggle to quantify the impacts of feral swine, while others make assumptions to provide estimates. I think there needs to be balance in whatever our final data story is, that ensures to couch any conclusions in the lack of big data and nuance to environmental issues.
+
+
+## Bibliography
+
