@@ -26,3 +26,18 @@ write_csv(combined_counties, "data/clean/combined_counties.csv")
 
 ```
 
+```{r}
+read_climate <- function(variable) {
+  read_csv(str_c("data/raw/", variable, ".csv")) |>
+    mutate(county = str_remove(Name, "County"),
+           state = State,
+           ID3 = str_sub(ID, -3, -1)) |> 
+    select(ID, ID3, county, state, variable)
+}
+
+read_climate("temp2125") |> 
+  left_join(read_climate("dailymin2125")) |> 
+  left_join(read_climate("dailymax2125")) |> 
+  left_join(read_climate("precip2125"))
+```
+
