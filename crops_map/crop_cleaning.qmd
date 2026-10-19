@@ -4,9 +4,15 @@ author: "Nico Thorn"
 format: html
 editor: visual
 ---
+
 This quarto document is where the cleaning of the United State Crop data was taken place.
 
+Price of wheat per bushel: August 2026 - 6.23 
+Price of soybeans per bushel: August 2026 - 12.10
+Price of hay per bushel: 
+
 # Loading and cleaning the data
+
 ```{r}
 # Loading library
 library(tidyverse)
@@ -19,6 +25,9 @@ loadfonts(device = "win")
 # Loading data
 corn <-read_csv("src/uncleaned/crop_data/corn.csv")
 harvested <-read_csv("src/uncleaned/crop_data/harvest.csv")
+hay <- read_csv("src/uncleaned/crop_data/hay.csv")
+soy <- read_csv("src/uncleaned/crop_data/soybean.csv")
+wheat <- read_csv("src/uncleaned/crop_data/wheat.csv")
 swine_20 <- read_csv("src/uncleaned/feral_swine_data/FY20_FeralSwine_Counties.csv")
 swine_21 <- read_csv("src/uncleaned/feral_swine_data/FY21_FeralSwine_Counties.csv")
 swine_22 <- read_csv("src/uncleaned/feral_swine_data/FY22_FeralSwine_Counties.csv")
@@ -198,13 +207,13 @@ ggplot(total_crop, aes(x = swine_pres, y = sum_acres, fill = harvest_or_planted)
 ```
 
 # Description of Visualization
+
 The purpose of this graph was to take a look at the potential damage caused by feral swine on the United States agricultural sector. Most literature that highlights the damage or threat that the invasive feral swine population poses mainly focuses on the damage caused to crops and livestock. The biggest United States crop is corn, so if large amounts of damage to corn could be attributed to feral swine, then we could potentially assume that feral swine have largely affected the agricultural and, subsequently, the economic sectors of the United States.
-	
+
 This graph shows on its x-axis, which is vertical, the different categories of counties: those that have feral swine present and those that do not. The y-axis shows the number of acres of land (in hundreds of thousands of acres) that are used for farming corn for each of those county types. The colors are used to designate which metric we are looking at: acres harvested vs. acres planted of corn. We can see on the graph that there seems to be way more corn planted and harvested in counties that do not have a reported feral swine population as compared to their swine-populated counterparts. Additionally, the graph shows that there isn’t a clear difference between the proportions of corn that were successfully harvested for grain. This could suggest that there are confounding variables (perhaps there was more corn harvested in one area than another but just wasn’t quantified in the “grain” category) or that the feral swine might not cause much discernible damage to corn crops. What is also notable is that we don’t have comparable-sized groups. This might be because most of the US’ corn is grown in the Midwest, whereas the feral swine population is centered around the South.
-	
+
 Moving forward, we should focus on crops located in the territory of feral swine territory to get a better representation of the damage they are causing. Mapping the locations of crops and swine might also be helpful to this end so we can better see the overlap in crops and the swine territory. We also might want to analyze other metrics to assess damage caused by feral swine (i.e., property damage). We might also like to analyze the trends over time. Have we gotten better at reducing the damage caused by feral swine on crops, and how has that changed over time?
 
-
-
 # AI statement
+
 ChatGPT was used once to debug a problem with the way I was formatting the annotate statements in the graph.
