@@ -1,0 +1,51 @@
+---
+title: "FP4 Nico Model Building"
+format: html
+editor: visual
+---
+
+### Background
+
+Using the machine learning algorithms that are taught in STAT 212: Statistical
+Machine learning, we can develop regression models that can predict future 
+state based off of prior data. However, what the models in STAT 212 lack is a
+spacial component. What spacial machine learning models help us incorporate 
+spacial relations into the model, having the regression of one space be 
+dependent on both its prior trends and those of its neighbors.
+
+For our project, we will be using a spacial machine learning algorithm because 
+feral swine 
+
+### Running Spacial Machine Learning Algorithms
+
+# Steps for Running Spacial Machine Learning Algorithms
+
+## Step 1: Determine Spacial Autocorrelation
+
+We first must determine spacial autocorrelation before we can even begin to run 
+a spacial machine learning algorithm. Spacial autocorrelation determines if 
+there is a spacial trend in out data or if there is a lack of trend. If there is
+a lack of a trend, we can not move on with running a spacial machine learning 
+algorithm.
+
+# Moran's I
+
+Moran's I is a method of determining spacial autocorrelation.
+
+```{r}
+# Loading Packages
+library(tidyverse)
+library(spdep)
+```
+
+```{r}
+# Loading Data
+swine <- read_csv("../data/clean/combined_counties.csv")
+```
+
+```{r}
+swine %>%
+  select(county_ID, swine_2020, swine_2021, swine_2022, swine_2023, swine_2024, swine_2025)
+```
+
+### Resources
