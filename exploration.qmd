@@ -1,0 +1,45 @@
+---
+title: "EDA"
+author: "Jack Nussbaum"
+format: html
+---
+
+```{r}
+#| messsage: FALSE
+#| warning: FALSE
+
+library(tidyverse)
+  
+read_crops <- function(crop) {
+  read_csv(str_c("data/raw/", crop, ".csv")) |> 
+    filter(Period == "YEAR", County != "OTHER COUNTIES") |> 
+    select(year = Year, state = State, county = County,
+           stateID = `State ANSI`, countyID = `County ANSI`,
+           `Data Item`, Value) |> 
+    pivot_wider(names_from = `Data Item`, values_from = Value)
+}
+  
+wheat <- read_crops("wheat") |> 
+  
+soy <- read_crops("soybean") |> 
+  select(year, state, county, stateID, countyID, production = `SOYBEANS - PRODUCTION, MEASURED IN BU`)
+corn <- read_crops("corn") |> 
+  select(year, state, county, stateID, countyID, production = `CORN, GRAIN - PRODUCTION, MEASURED IN BU`)
+```
+
+```{r}
+crops |> 
+  select(where(is.double), -year) |> 
+  pivot_longer(cols = where(is.double), names_to = "column") |> 
+  select(-value) |> 
+  left_join(
+    as.data.frame(colSums(is.na(crops))) |> 
+  rownames_to_column() |> 
+  select(column = rowname, num_NA = `colSums(is.na(crops))`)
+  ) |> 
+  filter(num_NA < 1000)
+
+
+nrow(crops)
+```
+
