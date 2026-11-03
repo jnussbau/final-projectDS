@@ -36,16 +36,52 @@ Moran's I is a method of determining spacial autocorrelation.
 # Loading Packages
 library(tidyverse)
 library(spdep)
+library(sf)
+library(mapview)
+library(sp)
 ```
 
 ```{r}
 # Loading Data
 swine <- read_csv("../data/clean/combined_counties.csv")
+us_county <- st_read("../data/raw/cb_2018_us_county_5m/cb_2018_us_county_5m.shp")
 ```
 
 ```{r}
-swine %>%
-  select(county_ID, swine_2020, swine_2021, swine_2022, swine_2023, swine_2024, swine_2025)
+# Making a dataset of all counties in the united states with their swine presence
+swine_counties = swine |> 
+  select(county_ID, swine_2020, swine_2021, swine_2022, swine_2023, swine_2024, swine_2025) |> 
+  mutate(across(where(is.logical), ~as.numeric(.x))) |> 
+  right_join(us_county, join_by(county_ID == GEOID)) |> 
+  mutate(swine_2020 = replace_na(swine_2020, 0),
+         swine_2021 = replace_na(swine_2021, 0),
+         swine_2022 = replace_na(swine_2022, 0),
+         swine_2023 = replace_na(swine_2023, 0),
+         swine_2024 = replace_na(swine_2024, 0),
+         swine_2025 = replace_na(swine_2025, 0)) |> 
+  st_as_sf(sf_column_name = "geometry") |> 
+  as(Class ="Spatial")
+
+# Mapping to see if the polygons work
+mapview(swine_counties, zcol = "swine_2020")
 ```
 
+```{r}
+# Moran's I
+nb <- poly2nb(swine_counties, queen = TRUE)
+#nbw <- nb2listw(nb, style = "W")
+
+#gmoran <- moran.test(swine_counties$swine_2020, nbw,
+                     alternative = "greater")
+#gmoran
+```
+
+
 ### Resources
+
+https://www.rdocumentation.org/packages/joyn/versions/0.3.0/topics/right_join
+https://dplyr.tidyverse.org/reference/mutate-joins.html
+https://r-spatial.github.io/sf/reference/coerce-methods.html
+https://www.paulamoraga.com/book-spatial/spatial-autocorrelation.html
+
+
