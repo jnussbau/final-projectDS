@@ -20,26 +20,27 @@ read_crops <- function(crop) {
 }
   
 wheat <- read_crops("wheat") |> 
-  
+  select(year, state, county, stateID, countyID, contains("PRODUCTION")) |> 
+  mutate(across(where(is.numeric), ~if_else(is.na(.x), 0, .x))) |> 
+  mutate(wheat = `WHEAT, SPRING, DURUM - PRODUCTION, MEASURED IN BU` + 
+           `WHEAT, WINTER - PRODUCTION, MEASURED IN BU` +
+           `WHEAT, SPRING, (EXCL DURUM) - PRODUCTION, MEASURED IN BU`) |> 
+  select(year, state, county, stateID, countyID, wheat)
+
 soy <- read_crops("soybean") |> 
-  select(year, state, county, stateID, countyID, production = `SOYBEANS - PRODUCTION, MEASURED IN BU`)
+  select(year, state, county, stateID, countyID, soybean = `SOYBEANS - PRODUCTION, MEASURED IN BU`)
+
 corn <- read_crops("corn") |> 
-  select(year, state, county, stateID, countyID, production = `CORN, GRAIN - PRODUCTION, MEASURED IN BU`)
+  select(year, state, county, stateID, countyID, corn = `CORN, GRAIN - PRODUCTION, MEASURED IN BU`)
 ```
 
 ```{r}
-crops |> 
-  select(where(is.double), -year) |> 
-  pivot_longer(cols = where(is.double), names_to = "column") |> 
-  select(-value) |> 
-  left_join(
-    as.data.frame(colSums(is.na(crops))) |> 
-  rownames_to_column() |> 
-  select(column = rowname, num_NA = `colSums(is.na(crops))`)
-  ) |> 
-  filter(num_NA < 1000)
+crop_production <- wheat |> 
+  full_join(corn, by = join_by(year, state, county, stateID, countyID)) |> 
+  full_join(soy, by = join_by(year, state, county, stateID, countyID)) |> 
+  mutate(fullID = str_c(stateID, countyID)) |> 
+  mutate(across(where(is.numeric), ~if_else(is.na(.x), 0, .x)))
 
-
-nrow(crops)
+write_csv(crop_production, "data/clean/crop_production.csv")
 ```
 

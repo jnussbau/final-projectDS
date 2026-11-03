@@ -5,11 +5,14 @@ format: html
 ---
 
 ```{r}
-#| messsage: FALSE
-#| warning: FALSE
+knitr::opts_chunk$set(message=FALSE, warning=FALSE)
+library(tidyverse)
+```
 
+
+```{r, USDA swine data}
 clean_counties <- function(year) {
-  read_csv(str_c("data/raw/swine-counties/counties_", year, ".csv")) |> 
+  read_csv(str_c("data/raw/swine-counties/counties_", year, ".csv"), show_col_types = F) |> 
     select(county_ID = FIPS,
            county = NAME,
            state = STATE_NAME) |> 
@@ -26,18 +29,53 @@ write_csv(combined_counties, "data/clean/combined_counties.csv")
 
 ```
 
-```{r}
+```{r county climate data}
 read_climate <- function(variable) {
-  read_csv(str_c("data/raw/", variable, ".csv")) |>
+  read_csv(str_c("data/raw/", variable, ".csv"), show_col_types = F) |>
     mutate(county = str_remove(Name, "County"),
            state = State,
            ID3 = str_sub(ID, -3, -1)) |> 
-    select(ID, ID3, county, state, variable)
+    select(ID, ID3, county, state, all_of(variable))
 }
 
-read_climate("temp2125") |> 
+climate <- read_climate("temp2125") |> 
   left_join(read_climate("dailymin2125")) |> 
   left_join(read_climate("dailymax2125")) |> 
   left_join(read_climate("precip2125"))
+
+write_csv(climate, "data/clean/climate_county.csv")
+```
+
+```{r crop data by counties}
+read_crops <- function(crop) {
+  read_csv(str_c("data/raw/", crop, ".csv"), show_col_types = F) |> 
+    filter(Period == "YEAR", County != "OTHER COUNTIES") |> 
+    select(year = Year, state = State, county = County,
+           stateID = `State ANSI`, countyID = `County ANSI`,
+           `Data Item`, Value) |> 
+    pivot_wider(names_from = `Data Item`, values_from = Value)
+}
+  
+wheat <- read_crops("wheat") |> 
+  select(year, state, county, stateID, countyID, contains("PRODUCTION")) |> 
+  mutate(across(where(is.numeric), ~if_else(is.na(.x), 0, .x))) |> 
+  mutate(wheat = `WHEAT, SPRING, DURUM - PRODUCTION, MEASURED IN BU` + 
+           `WHEAT, WINTER - PRODUCTION, MEASURED IN BU` +
+           `WHEAT, SPRING, (EXCL DURUM) - PRODUCTION, MEASURED IN BU`) |> 
+  select(year, state, county, stateID, countyID, wheat)
+
+soy <- read_crops("soybean") |> 
+  select(year, state, county, stateID, countyID, soybean = `SOYBEANS - PRODUCTION, MEASURED IN BU`)
+
+corn <- read_crops("corn") |> 
+  select(year, state, county, stateID, countyID, corn = `CORN, GRAIN - PRODUCTION, MEASURED IN BU`)
+
+crop_production <- wheat |> 
+  full_join(corn, by = join_by(year, state, county, stateID, countyID)) |> 
+  full_join(soy, by = join_by(year, state, county, stateID, countyID)) |> 
+  mutate(fullID = str_c(stateID, countyID)) |> 
+  mutate(across(where(is.numeric), ~if_else(is.na(.x), 0, .x)))
+
+write_csv(crop_production, "data/clean/crop_production.csv")
 ```
 
