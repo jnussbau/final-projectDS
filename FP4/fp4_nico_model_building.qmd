@@ -49,8 +49,8 @@ us_county <- st_read("../data/raw/cb_2018_us_county_5m/cb_2018_us_county_5m.shp"
 ```
 
 ```{r}
-# Making a dataset using only the contiguous United States
-
+# Making a dataset using only the contiguous United States without island counties
+# Removing Nantucket County
 us_48 <- us_county |> 
   filter(STATEFP != "15"& STATEFP != "11" & STATEFP != "02" & STATEFP != "72"
          & STATEFP != "78" & STATEFP != "60" & STATEFP != "66" & STATEFP != "69"
@@ -78,30 +78,13 @@ mapview(swine_counties, zcol = "swine_2020")
 ```{r}
 # Moran's I
 nb <- poly2nb(swine_counties, queen = TRUE)
-# Removing Islands
-## finding the islands
 
 plot(nb,coordinates(swine_counties))
 
-
-#gmoran <- moran.test(swine_counties$swine_2020, nbw,alternative = "greater")
-#gmoran
-
-# nb_new <- list()
-# for (i in 1:length(nb)) {
-#   if(length(nb[[i]]) != 1) {
-#     nb_new[[i]] <- nb[[i]]
-#   }
-#   if(length(nb[[i]]) == 1){
-#     if (nb[[i]] != 0){
-#       nb_new[[i]] <- nb[[i]]
-#     }
-#   }
-# }
-# 
-# nb_new <- eList::null.omit(nb_new)
-# 
 nbw <- nb2listw(nb, style = "W")
+
+gmoran <- moran.test(swine_counties$swine_2020, nbw,alternative = "greater")
+gmoran
 ```
 
 
