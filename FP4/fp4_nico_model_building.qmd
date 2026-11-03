@@ -39,6 +39,7 @@ library(spdep)
 library(sf)
 library(mapview)
 library(sp)
+library(rlist)
 ```
 
 ```{r}
@@ -48,11 +49,18 @@ us_county <- st_read("../data/raw/cb_2018_us_county_5m/cb_2018_us_county_5m.shp"
 ```
 
 ```{r}
+# Making a dataset using only the contiguous United States
+
+us_48 <- us_county |> 
+  filter(STATEFP != "15"& STATEFP != "11" & STATEFP != "02" & STATEFP != "72"
+         & STATEFP != "78" & STATEFP != "60" & STATEFP != "66" & STATEFP != "69"
+         & GEOID != "53055" & GEOID != "25019")
+
 # Making a dataset of all counties in the united states with their swine presence
 swine_counties = swine |> 
   select(county_ID, swine_2020, swine_2021, swine_2022, swine_2023, swine_2024, swine_2025) |> 
   mutate(across(where(is.logical), ~as.numeric(.x))) |> 
-  right_join(us_county, join_by(county_ID == GEOID)) |> 
+  right_join(us_48, join_by(county_ID == GEOID)) |> 
   mutate(swine_2020 = replace_na(swine_2020, 0),
          swine_2021 = replace_na(swine_2021, 0),
          swine_2022 = replace_na(swine_2022, 0),
@@ -66,14 +74,34 @@ swine_counties = swine |>
 mapview(swine_counties, zcol = "swine_2020")
 ```
 
+
 ```{r}
 # Moran's I
 nb <- poly2nb(swine_counties, queen = TRUE)
-#nbw <- nb2listw(nb, style = "W")
+# Removing Islands
+## finding the islands
 
-#gmoran <- moran.test(swine_counties$swine_2020, nbw,
-                     alternative = "greater")
+plot(nb,coordinates(swine_counties))
+
+
+#gmoran <- moran.test(swine_counties$swine_2020, nbw,alternative = "greater")
 #gmoran
+
+# nb_new <- list()
+# for (i in 1:length(nb)) {
+#   if(length(nb[[i]]) != 1) {
+#     nb_new[[i]] <- nb[[i]]
+#   }
+#   if(length(nb[[i]]) == 1){
+#     if (nb[[i]] != 0){
+#       nb_new[[i]] <- nb[[i]]
+#     }
+#   }
+# }
+# 
+# nb_new <- eList::null.omit(nb_new)
+# 
+nbw <- nb2listw(nb, style = "W")
 ```
 
 
@@ -83,5 +111,7 @@ https://www.rdocumentation.org/packages/joyn/versions/0.3.0/topics/right_join
 https://dplyr.tidyverse.org/reference/mutate-joins.html
 https://r-spatial.github.io/sf/reference/coerce-methods.html
 https://www.paulamoraga.com/book-spatial/spatial-autocorrelation.html
+https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt
+
 
 
