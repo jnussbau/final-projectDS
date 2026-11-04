@@ -6,15 +6,9 @@ editor: visual
 
 ### Background
 
-Using the machine learning algorithms that are taught in STAT 212: Statistical
-Machine learning, we can develop regression models that can predict future 
-state based off of prior data. However, what the models in STAT 212 lack is a
-spacial component. What spacial machine learning models help us incorporate 
-spacial relations into the model, having the regression of one space be 
-dependent on both its prior trends and those of its neighbors.
+Using the machine learning algorithms that are taught in STAT 212: Statistical Machine learning, we can develop regression models that can predict future state based off of prior data. However, what the models in STAT 212 lack is a spacial component. What spacial machine learning models help us incorporate spacial relations into the model, having the regression of one space be dependent on both its prior trends and those of its neighbors.
 
-For our project, we will be using a spacial machine learning algorithm because 
-feral swine 
+For our project, we will be using a spacial machine learning algorithm because feral swine
 
 ### Running Spacial Machine Learning Algorithms
 
@@ -22,11 +16,7 @@ feral swine
 
 ## Step 1: Determine Spacial Autocorrelation
 
-We first must determine spacial autocorrelation before we can even begin to run 
-a spacial machine learning algorithm. Spacial autocorrelation determines if 
-there is a spacial trend in out data or if there is a lack of trend. If there is
-a lack of a trend, we can not move on with running a spacial machine learning 
-algorithm.
+We first must determine spacial autocorrelation before we can even begin to run a spacial machine learning algorithm. Spacial autocorrelation determines if there is a spacial trend in out data or if there is a lack of trend. If there is a lack of a trend, we can not move on with running a spacial machine learning algorithm.
 
 # Moran's I
 
@@ -74,7 +64,6 @@ swine_counties = swine |>
 mapview(swine_counties, zcol = "swine_2020")
 ```
 
-
 ```{r}
 # Moran's I
 nb <- poly2nb(swine_counties, queen = TRUE)
@@ -87,14 +76,6 @@ gmoran <- moran.test(swine_counties$swine_2020, nbw,alternative = "greater")
 gmoran
 ```
 
-
 ### Resources
 
-https://www.rdocumentation.org/packages/joyn/versions/0.3.0/topics/right_join
-https://dplyr.tidyverse.org/reference/mutate-joins.html
-https://r-spatial.github.io/sf/reference/coerce-methods.html
-https://www.paulamoraga.com/book-spatial/spatial-autocorrelation.html
-https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt
-
-
-
+https://www.rdocumentation.org/packages/joyn/versions/0.3.0/topics/right_join https://dplyr.tidyverse.org/reference/mutate-joins.html https://r-spatial.github.io/sf/reference/coerce-methods.html https://www.paulamoraga.com/book-spatial/spatial-autocorrelation.html https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt
