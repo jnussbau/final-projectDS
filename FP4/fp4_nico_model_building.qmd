@@ -76,6 +76,13 @@ gmoran <- moran.test(swine_counties$swine_2020, nbw,alternative = "greater")
 gmoran
 ```
 
+### File Saving
+```{r}
+write.csv(swine_counties, "../data/clean/spatial_swine.csv")
+write.csv(us_48, "../data/clean/lower_48.csv")
+```
+
+
 ### Resources
 
 https://www.rdocumentation.org/packages/joyn/versions/0.3.0/topics/right_join https://dplyr.tidyverse.org/reference/mutate-joins.html https://r-spatial.github.io/sf/reference/coerce-methods.html https://www.paulamoraga.com/book-spatial/spatial-autocorrelation.html https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt
