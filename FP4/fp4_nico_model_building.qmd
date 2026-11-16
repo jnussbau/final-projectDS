@@ -77,11 +77,11 @@ gmoran
 ```
 
 ### File Saving
+
 ```{r}
 write.csv(swine_counties, "../data/clean/spatial_swine.csv")
 write.csv(us_48, "../data/clean/lower_48.csv")
 ```
-
 
 ### Resources
 
