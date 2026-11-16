@@ -1,0 +1,33 @@
+---
+title: "FP5"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(spatialreg)
+library(spdep)
+```
+
+```{r}
+# importing data
+swine <- read.csv("../data/clean/spatial_swine.csv")
+lower_48 <- read_csv("../data/clean/lower_48.csv")
+```
+
+```{r}
+swine_years <- swine |> 
+  pivot_longer(cols = c(swine_2020,swine_2021,swine_2022,swine_2023,swine_2024, swine_2025), names_to = "year", values_to = "swine") |>
+  mutate(year = as.numeric(str_remove(year, "swine_")),
+         county_ID = as.character(county_ID)) |> 
+  right_join(lower_48, join_by(county_ID == GEOID))
+```
+
+```{r}
+# Fix this
+nb <- poly2nb(swine_years, queen = TRUE)
+
+nc_sar_lag <- lagsarlm(formula = log(SID74+1) ~ BIR74, data = nc, listw = listW, type="lag")
+```
+
