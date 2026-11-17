@@ -16,18 +16,14 @@ Factors such as crop yield, income and health outcomes can be heavily influenced
 ## Load necessary packages
 
 ```{r}
+#| message: FALSE
 library(tidyverse)
 library(sf) # package to use spatial features in R
 library(tigris) # package with county boundaries
 library(spdep) # package to create neighborhoods
 library(spatialreg) # package to spatially model data
-```
 
-# 1. Mapping Review
-
-Use the given data to create a map of both the soybean production by county in Minnesota, as well as the average precipitation by county.
-
-```{r}
+# Load in Data
 # Using `USAboundaries` read in the shapefiles for states
 countiesMN <- counties(state = "MN")
 
@@ -38,14 +34,29 @@ crops <- read_csv("../data/clean/crop_production.csv") |>
 precip <- read_csv("../data/clean/climate_county.csv") |> 
   filter(state == "Minnesota") |> 
   select(COUNTYFP = ID3, precip = precip2125)
+```
 
+# 1. Mapping Review
+
+Use the given data to create a map of both the soybean production by county in Minnesota, as well as the average precipitation by county. You will need to join the data sets together. (HINT: Start with the set containing spatial features and look for a common identifier.) 
+
+```{r}
 joined_counties <- countiesMN |> 
   left_join(crops, by = join_by(COUNTYFP)) |> 
+  mutate(soybean = if_else(is.na(soybean), 0, soybean)) |> 
   left_join(precip, by = join_by(COUNTYFP))
 
 joined_counties |> 
   ggplot(aes(fill = precip)) +
-  geom_sf()
+  geom_sf() +
+  scale_fill_gradient(low = "white", high = "navy") +
+  labs(title = "Precipitation(mm/year) by county")
+
+joined_counties |> 
+  ggplot(aes(fill = soybean)) +
+  geom_sf() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "Soybean production(bushels) by county")
 ```
 
 # 2. Methods for analyzing neighbors
@@ -55,9 +66,11 @@ joined_counties |>
 This will assign neighbors based if the two regions share a point(Queen) or share a border(Rook). Comment on the difference(or lack thereof!) between the two neighborhood structures.
 
 ```{r}
+# Create neighborhood structures
 queen_nb <- poly2nb(countiesMN, queen = TRUE)
-rook_nb <- poly2nb(countiesMN, queen = FALSE) #Does rook structure
+rook_nb <- poly2nb(countiesMN, queen = FALSE)
 
+# Convert Neighborhood Structure to shape files
 queen_lines <- nb2lines(nb = queen_nb, coords = centroids, as_sf = TRUE)
 rook_lines <- nb2lines(nb = rook_nb, coords = centroids, as_sf = TRUE)
 
@@ -111,8 +124,15 @@ ggplot() +
 ```
 
 
-# 3. Creating a Spatial Lag Model
+# 3. Build a non-spatial model
 
-# 4. Compare with non-spatial model
+Use skills from 155 or 253 to create a non-spatial model predicting soybean production using precipitation levels.
+
+```{r}
+lm(soybean ~ precipitation)
+```
+
+
+# 4. Creating a Spatial Lag Model
 
 
