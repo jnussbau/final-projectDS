@@ -8,26 +8,42 @@ editor: visual
 library(tidyverse)
 library(spatialreg)
 library(spdep)
+library(mapview)
 ```
 
 ```{r}
 # importing data
 swine <- read.csv("../data/clean/spatial_swine.csv")
-lower_48 <- read_csv("../data/clean/lower_48.csv")
+us_states <- st_read("../data/raw/cb_2018_us_county_5m/cb_2018_us_county_5m.shp")
 ```
 
 ```{r}
+lower_48 <- us_states |> 
+  filter(STATEFP != "15"& STATEFP != "11" & STATEFP != "02" & STATEFP != "72"
+         & STATEFP != "78" & STATEFP != "60" & STATEFP != "66" & STATEFP != "69"
+         & GEOID != "53055" & GEOID != "25019")
+
 swine_years <- swine |> 
   pivot_longer(cols = c(swine_2020,swine_2021,swine_2022,swine_2023,swine_2024, swine_2025), names_to = "year", values_to = "swine") |>
   mutate(year = as.numeric(str_remove(year, "swine_")),
          county_ID = as.character(county_ID)) |> 
-  right_join(lower_48, join_by(county_ID == GEOID))
+  right_join(lower_48, join_by(county_ID == GEOID)) |> 
+  st_as_sf(sf_column_name = "geometry") |> 
+  as(Class ="Spatial")
 ```
 
 ```{r}
 # Fix this
 nb <- poly2nb(swine_years, queen = TRUE)
+listW <- nb2listw(nb, style = 'W')
 
-nc_sar_lag <- lagsarlm(formula = log(SID74+1) ~ BIR74, data = nc, listw = listW, type="lag")
+nc_sar_lag <- lagsarlm(formula = log(swine+1) ~ year, data = swine_years, listw = listW, type="lag", method = "LU")
+# LU added because it took too long
+```
+
+```{r}
+swine$sar_lag <- exp(fitted(nc_sar_lag))
+
+mapview(nb, zcol = "sar_lag")
 ```
 
