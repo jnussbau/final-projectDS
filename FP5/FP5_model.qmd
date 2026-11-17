@@ -46,4 +46,3 @@ swine$sar_lag <- exp(fitted(nc_sar_lag))
 
 mapview(nb, zcol = "sar_lag")
 ```
-
