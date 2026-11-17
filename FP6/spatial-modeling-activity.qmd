@@ -1,17 +1,24 @@
 ---
 title: "Spatial Modeling Activity (FP6)"
-author: "YOUR NAME"
+author: "ANSWER KEY"
 format:
   html:
     toc: true
     toc-depth: 2
     embed-resources: true
-    code-fold: true
 ---
 
 # Introduction
 
-Factors such as crop yield, income and health outcomes can be heavily influenced by geography. This activity will serve as an introduction to including neighbors as predictors in an Ordinary Least Squares(OLS) model. 
+Factors such as crop yield, income and health outcomes can be heavily influenced by geography. This activity will serve as an introduction to including neighbors as predictors in an Ordinary Least Squares(OLS) model.
+
+## Learning Goals
+
+ - Review basic mapping and GIS skills in R
+ - Understand different neighborhood structures and evaluate their costs and benefits
+ - Visualize limitations of OLS when working with spatially correlated data
+ - Introduce the methods of a spatial lag model
+ - Use Moran's I as a method of evaluating the spatial correlation within the residuals of a model
 
 ## Load necessary packages
 
@@ -25,26 +32,29 @@ library(spatialreg) # package to spatially model data
 
 # Load in Data
 # Using `USAboundaries` read in the shapefiles for states
-countiesMN <- counties(state = "MN")
+countiesMN <- read_sf("data/counties_MN/counties_MN.shp")
 
-crops <- read_csv("../data/clean/crop_production.csv") |> 
+crops <- read_csv("data/crop_production.csv") |> 
   filter(stateID == 27) |> 
-  select(COUNTYFP = countyID, soybean)
+  select(COUNTYFP = countyID, soybean, corn, wheat)
 
-precip <- read_csv("../data/clean/climate_county.csv") |> 
+climate <- read_csv("data/climate_county.csv") |> 
   filter(state == "Minnesota") |> 
-  select(COUNTYFP = ID3, precip = precip2125)
+  select(COUNTYFP = ID3, precip = precip2125, temp = temp2125)
 ```
 
 # 1. Mapping Review
 
-Use the given data to create a map of both the soybean production by county in Minnesota, as well as the average precipitation by county. You will need to join the data sets together. (HINT: Start with the set containing spatial features and look for a common identifier.) 
+Pick one of the crops you want to explore. Use the given data to create a map of your chosen crop production by county in Minnesota, as well as the yearly precipitation or temperature by county. You will need to join the data sets together. (HINT: Start with the set containing spatial features and look for a common identifier.) 
+
+PREDICTOR(S): Precipitation
+OUTCOME: Soybean
 
 ```{r}
 joined_counties <- countiesMN |> 
   left_join(crops, by = join_by(COUNTYFP)) |> 
   mutate(soybean = if_else(is.na(soybean), 0, soybean)) |> 
-  left_join(precip, by = join_by(COUNTYFP))
+  left_join(climate, by = join_by(COUNTYFP))
 
 joined_counties |> 
   ggplot(aes(fill = precip)) +
@@ -61,11 +71,16 @@ joined_counties |>
 
 # 2. Methods for analyzing neighbors
 
+In this section we will look at different neighborhood structures and ultimately decide what method to use going forward for this data. Ideally, we want counties to have a similar number of neighbors that seem reasonable to assume there would be correlation between the two. We also want to make sure that each county has some neighbors, so we have that data when we go to model.
+
 ## Rook and Queen Neighbors
 
-This will assign neighbors based if the two regions share a point(Queen) or share a border(Rook). Comment on the difference(or lack thereof!) between the two neighborhood structures.
+This will assign neighbors based if the two regions share a point(Queen) or share a border(Rook). Using the spatial features, make a plot of the neighborhoods over the county map(no other variables). Comment on the difference(or lack thereof!) between the two neighborhood structures.
 
 ```{r}
+# Find the center of each county
+centroids <- st_centroid(st_geometry(countiesMN), of_largest_polygon = TRUE)
+
 # Create neighborhood structures
 queen_nb <- poly2nb(countiesMN, queen = TRUE)
 rook_nb <- poly2nb(countiesMN, queen = FALSE)
@@ -90,15 +105,14 @@ library(patchwork)
 a+b
 ```
 
+These structures are very similar, as there aren't seemingly many quadrapoints between counties in Minnesota. Each county seems to have quite a few neighbors, but some only have a few if they are in a corner.
 
 ## K-Nearest Neighbors
 
-Each region will be given at minimum K neighbors. Choose a reasonable number of neighbors to give each region. Then plot the neighbors and weigh pros and cons.
+Each region will be given at minimum K neighbors, the close K to its center. Choose a reasonable number of neighbors to give each region. Then plot the neighbors like previously. Comment on the costs and benefits to this structure compared to others.
 
 ```{r}
-centroids <- st_centroid(st_geometry(countiesMN), of_largest_polygon = TRUE)
-
-knn_nb <- knn2nb(knearneigh(centroids, k = ???))
+knn_nb <- knn2nb(knearneigh(centroids, k = 3))
 
 knn_lines <- nb2lines(nb = knn_nb, coords = centroids, as_sf = TRUE)
 
@@ -109,30 +123,120 @@ ggplot() +
   ggthemes::theme_map()
 ```
 
+This gives the counties a roughly equal number of neighbors. It doesn't account for distance between the countries, large rural ones will have the same number of neighbors as smaller, urban counties, but will be much further apart.
+
 ## Distance-Based Neighbors
 
-Neighbors will be assigned if they fall within a given distance range. Choose a distance, in kilometers to which you want to consider two counties neighbors.
+Neighbors will be assigned if they fall within a given distance range. This is decided based upon the center of the county. Choose a distance, in kilometers to which you want to consider two counties neighbors.
 
 ```{r}
-dist_nb <- dnearneigh(centroids, d1 = 0, d2 = ???) # km if geographical coordinates
+dist_nb <- dnearneigh(centroids, d1 = 0, d2 = 100) # km if geographical coordinates
 
-dist_lines <- nb2lines(nb = distnb, coords = centroids, as_sf = TRUE)
+dist_lines <- nb2lines(nb = dist_nb, coords = centroids, as_sf = TRUE)
 
 ggplot() +
   geom_sf(data = countiesMN) +
-  geom_sf(data = dist_lines)
+  geom_sf(data = dist_lines) +
+  labs(title = "Distance Neighborhood Structure, <100km") +
+  ggthemes::theme_map()
 ```
+
+Since the counties vary greatly in size, this method doesn't seem applicable for this data. Urban counties are very close together and have many neighbors, and large counties are very far apart and have very few neighbors. 
+
+CHOOSE WHICH STRUCTURE TO USE: K-Nearest Neighbors
 
 
 # 3. Build a non-spatial model
 
-Use skills from 155 or 253 to create a non-spatial model predicting soybean production using precipitation levels.
+Use skills from 155 or 253 to create a non-spatial model predicting your crop production using your chosen predictor. You may want to take the log of the soybean data to account for the extreme values. Make a map of the residuals to show where the model is over- and under-predicting. Comment on the overall strength of this model, as well as any notable geographic patterns.
 
 ```{r}
-lm(soybean ~ precipitation)
+mod1 <- lm(soybean ~ precip, data = joined_counties)
+summary(mod1)
+
+joined_counties <- joined_counties |> 
+  mutate(resid = soybean - predict(mod1))
+
+joined_counties |> 
+  ggplot() +
+  geom_sf(aes(fill = resid)) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
+  labs(title = "Residuals of OLS Model")
+```
+
+Counties residuals appear to be very close to it's neighbors. Overall the model is a weak predictor of soybean yield, as we are only using yearly precipitation and that tends to be similar across the entire state.
+
+## Moran's I
+
+Moran's I is a measure of spatial correlation. Below is code that calculates Moran's I for the residuals of each county and plots it. High magnitude Moran's I mean that the residuals are highly spatially correlated with those around it. Negative mean an inverse correlation, positive meaning that residuals are very similar. Moran's I cannot be calculated if a county has no neighbors, make sure that whatever neighborhood structure you chose, there was a neighbor for each county.
+
+```{r}
+# Turn neighborhood into list needed for model, using your chosen structure
+nb_mat <- nb2listw(knn_nb, style = "W")
+
+local_moran <- spdep::localmoran(joined_counties$resid, nb_mat)
+
+joined_counties |> 
+  bind_cols(local_moran) |> 
+  ggplot() +
+  geom_sf(aes(fill = Ii)) +
+  labs(fill = 'Local Moran I') + 
+  scale_fill_gradient2(mid = "white", high = "red", low = "blue") +
+  ggthemes::theme_map() +
+  theme(legend.position = "right") 
 ```
 
 
 # 4. Creating a Spatial Lag Model
 
+Likely your map of residuals looked highly spatially correlated. Counties with low residuals were quite close to counties with high residuals. 
 
+$Y = \rho \cdot W + \beta \cdot X + \epsilon$
+
+This is the formula for the spatial lag model. The new term different from OLS is $\rho \cdot W$. $\rho$ is a weight, similar to $\beta$ and W is the matrix of our neighbors, row-standardized. This mean each row, which represents one county, will add up to 1. Now, we have our traditional OLS model, with a predictor added for the mean outcome of each of the counties neighbors.
+
+A spatial lag model will essentially use the average outcome of its neighbors as another predictor for the model. The big assumption for this model is that counties are likely to have similar crop yield to their neighbors. Contextually, this is likely caused by similar environmental and human factors. Counties good for growing crops are likely close to other counties good for crops.
+
+## Spatial Lag Model
+
+```{r}
+#| warning: FALSE
+
+# Create Spatial Lag Model
+mod2_lag <- lagsarlm(soybean ~ precip, data = joined_counties, listw = nb_mat, type = "lag")
+
+summary(mod2_lag)
+
+joined_counties <- joined_counties |> 
+  mutate(resid2 = as.numeric(soybean - predict(mod2_lag)))
+
+joined_counties |> 
+  ggplot() +
+  geom_sf(aes(fill = resid2)) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red")
+```
+
+There still appears to be leftover spatial correlation, specifically in the northeastern corner of the state. The model does a poor job predicting for these counties, consistently over-predicting for them. This is partly because there is little to no soybean production in this part of the state. Our model struggles to capture the extreme county-to-county variance. A good question for further research might be in finding out who owns that land, and how heavily forested it is compared to southern Minnesota.
+
+## Moran's I, Again
+
+Now, calculate Moran's I for the residuals of the spatial lag model. Ideally, you will have removed much of the spatial correlation compared to the OLS model.
+
+```{r}
+local_moran <- spdep::localmoran(joined_counties$resid2, nb_mat)
+
+joined_counties |> 
+  bind_cols(local_moran) |> 
+  ggplot() +
+  geom_sf(aes(fill = Ii)) +
+  labs(fill = 'Local Moran I') + 
+  scale_fill_gradient2(mid = "white", high = "red", low = "blue") +
+  ggthemes::theme_map() +
+  theme(legend.position = "right") 
+```
+
+
+
+# 5. Extra Challenge: Washington
+
+There is something that creates an extra challenge for Washington. You will need to remove some counties that make this analysis tricky. Remember, each county will need a neighbor in order to successfully run Moran's I.
