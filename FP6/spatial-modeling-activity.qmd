@@ -1,6 +1,6 @@
 ---
 title: "Spatial Modeling Activity (FP6)"
-author: "YOUR NAME"
+author: "Nico and Jack"
 format:
   html:
     toc: true
@@ -210,3 +210,135 @@ joined_counties |>
 # 5. Extra Challenge: Washington
 
 There is something that creates an extra challenge for Washington. You will need to remove some counties that make this analysis tricky. Remember, each county will need a neighbor in order to successfully run Moran's I.
+
+Let's follow the same activity with the wheat data as above with the State of Washington. 
+
+```{r}
+#| eval: FALSE
+# Loading data for Washington state
+countiesWA <- st_read("../data/raw/cb_2018_us_county_5m/cb_2018_us_county_5m.shp") |> 
+  filter(STATEFP == 53) |> 
+  select(GEOID, COUNTYFP, NAME, geometry)
+
+cropsWA <- read_csv("../data/clean/crop_production.csv") |> 
+  filter(stateID == 53) |> 
+  select(COUNTYFP = countyID, wheat)
+
+climateWA <- read_csv("data/climate_county.csv") |> 
+  filter(state == "Minnesota") |> 
+  select(COUNTYFP = ID3, precip = precip2125, temp = temp2125)
+```
+
+```{r}
+#| eval: FALSE
+# Mapping the State of Washington with the data
+joined_counties_WA <- countiesWA |> 
+  left_join(cropsWA, by = join_by(COUNTYFP)) |> 
+  mutate(wheat = if_else(is.na(wheat), 0, wheat)) |> 
+  left_join(climateWA, by = join_by(COUNTYFP))
+
+joined_counties_WA |> 
+  ???
+
+# Neighbors Map
+centroids <- st_centroid(???)
+
+queen_nb <- poly2nb(???)
+
+queen_lines <- nb2lines(???)
+
+ggplot() +
+  geom_sf(data = countiesWA) +
+  geom_sf(data = ???) +
+  labs(title = "Washington Neighborhood Structure") +
+  ggthemes::theme_map()
+```
+
+```{r}
+#| eval: false
+# Evaluate Moran's I
+gmoran <- moran.test(???)
+```
+
+Why does the code above not run? (Hint: Pay attention to warnings and error messages.)
+
+**YOUR ANSWER HERE**
+
+Here are some solutions to the the above problem.
+
+## Solution 1: Simply remove the island.
+
+If you are running a model where things cannot cross large bodies of water (i.e. feral swine cannot swim to distant islands), then removing the island is a simple solution to the problem.
+
+```{r}
+# Removing island
+joined_counties_WA_removed <- joined_counties_WA |> 
+  filter(GEOID != "53055")
+
+centroids <- st_centroid(???)
+
+queen_nb_removed <- poly2nb(???)
+
+gmoran <- moran.test(???)
+
+gmoran
+```
+Now we are able to calculate Moran's I.
+
+
+Now on to the mapping of the residuals.
+
+```{r}
+# Fixing problems with scaling
+joined_counties_WA_removed$wheat_tho <- joined_counties_WA_removed$wheat / 1000
+
+nb_mat_removed <- nb2listw(queen_nb_removed, zero.policy = TRUE)
+
+mod3_lag <- lagsarlm(wheat_tho ~ precip, data = joined_counties_WA_removed, listw = nb_mat_removed, type = "lag")
+
+joined_counties_WA_removed <- joined_counties_WA_removed |> 
+  mutate(resid2 = as.numeric(wheat - predict(mod3_lag)))
+
+joined_counties_WA_removed |> 
+  ???
+```
+
+Why might you not want to remove and island from a data set?
+
+**YOUR ANSWER HERE**
+
+## Solution 2: Running a different type of model.
+
+Different types of models do not have the same types of restrictions as a saptial lag model, and have different ways in which they can include islands.
+
+However, what might we not get from this type of model that we might from a spatial lag model?
+
+**YOUR ANSWER HERE**
+
+Solution 3: Change the zero.policy value
+
+The zero.policy argument determines if the is a weight assigned to areas with zero neighbors. Without assignment, the value is automatically NULL. If the value is set to TRUE, for objects with no neighbors, lists will be formed with zero-length vectors. 
+
+```{r}
+gmoran <- moran.test(joined_counties_WA$wheat, nb2listw(queen_nb, zero.policy = TRUE), alternative = "greater")
+
+gmoran
+```
+
+```{r}
+nb_mat <- nb2listw(queen_nb, zero.policy = TRUE)
+
+mod4_lag <- lagsarlm(wheat~ precip , data = joined_counties_WA, listw = nb_mat, type = "lag", zero.policy = TRUE)
+
+joined_counties_WA <- joined_counties_WA |> 
+  ???
+
+joined_counties_WA |> 
+  ???
+```
+
+Yay, it worked!
+
+Comment on the differences between the two residual.
+
+
