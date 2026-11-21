@@ -7,6 +7,9 @@ format: html
 ```{r}
 knitr::opts_chunk$set(message=FALSE, warning=FALSE)
 library(tidyverse)
+library(terra)
+library(sf)
+library(raster)
 ```
 
 
@@ -77,5 +80,59 @@ crop_production <- wheat |>
   mutate(across(where(is.numeric), ~if_else(is.na(.x), 0, .x)))
 
 write_csv(crop_production, "data/clean/crop_production.csv")
+```
+
+```{r}
+raster <- rast("data/raw/Annual_NLCD_LndCov_2025_CU_C1V2/Annual_NLCD_LndCov_2025_CU_C1V2.tif")
+vector <- tigris::counties()
+
+
+reclass_matrix <- matrix(c(
+  11, 1,
+  12, 1,
+  21, 2,
+  22, 2,  
+  23, 2,
+  24, 2,
+  41, 3,
+  42, 3,
+  43, 3,
+  81, 4,
+  82, 4,
+  90, 5,
+  95, 5,
+  31, 6,
+  52, 7,
+  71, 7
+), ncol = 2, byrow = TRUE)
+
+raster <- classify(raster, reclass_matrix)
+
+vector <- st_transform(vector, crs(raster))
+
+crop_raster <- crop(raster, vector)
+mask_raster <- mask(crop_raster, vector)
+
+plot(mask_raster)
+
+vector$land_cover <- exactextractr::exact_extract(mask_raster, vector, 'majority') 
+
+vector <- vector |> 
+  mutate(land_cover = case_when(
+    land_cover == 1 ~ "Water/Snow",
+    land_cover == 2 ~ "Developed",
+    land_cover == 3 ~ "Forest",
+    land_cover == 4 ~ "Cropland",
+    land_cover == 5 ~ "Wetlands",
+    land_cover == 6 ~ "Barren",
+    land_cover == 7 ~ "Shrub/Grassland"
+  ))
+
+vector <- vector |> 
+  filter(STATEFP != "15"& STATEFP != "11" & STATEFP != "02" & STATEFP != "72"
+         & STATEFP != "78" & STATEFP != "60" & STATEFP != "66" & STATEFP != "69")
+
+st_write(vector |> dplyr::select(land_cover), "data/clean/land_cover/land_cover.shp")
+
 ```
 
